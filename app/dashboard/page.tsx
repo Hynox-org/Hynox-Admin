@@ -6,27 +6,25 @@ import { Button } from "@/components/ui/button"
 import { Invoice, Quotation, Client } from "@/lib/types"
 import { listClients, listInvoices, listQuotes } from "@/lib/storage"
 import { Stat } from "@/components/stats-cards" // Assuming Stat type is exported
-import { toast } from "@/hooks/use-toast"
 
-async function getDashboardData() {
+interface DashboardData {
+  invoices: Invoice[];
+  quotations: Quotation[];
+  clients: Client[];
+  status: "success" | "error";
+  message: string;
+}
+
+async function getDashboardData(): Promise<DashboardData> {
   try {
     const [invoices, quotations, clients] = await Promise.all([
       listInvoices(),
       listQuotes(),
       listClients(),
     ])
-    toast({
-      title: "Dashboard data loaded",
-      description: "Latest invoices, quotations, and client data are displayed.",
-    })
-    return { invoices, quotations, clients }
+    return { invoices, quotations, clients, status: "success", message: "Dashboard data loaded" }
   } catch (e: any) {
-    toast({
-      title: "Error loading dashboard data",
-      description: e.message,
-      variant: "destructive",
-    })
-    return { invoices: [], quotations: [], clients: [] } // Return empty arrays on error
+    return { invoices: [], quotations: [], clients: [], status: "error", message: e.message }
   }
 }
 
@@ -37,8 +35,11 @@ function formatCurrency(amount: number, currency: string = "INR") {
   }).format(amount)
 }
 
+import { Toaster } from "@/components/ui/toaster"
+import DashboardClientWrapper from "@/app/dashboard/dashboard-client-wrapper"
+
 export default async function DashboardPage() {
-  const { invoices, quotations, clients } = await getDashboardData()
+  const { invoices, quotations, clients, status, message } = await getDashboardData()
 
   const totalInvoices = invoices.length
   const totalQuotations = quotations.length
@@ -101,7 +102,9 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+        <DashboardClientWrapper status={status} message={message} />
       </section>
+      <Toaster />
     </main>
   )
 }

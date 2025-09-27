@@ -80,7 +80,7 @@ export default function SettingsPage() {
     <main className="flex min-h-[80vh]">
       <SidebarNav />
       <section className="flex-1 p-6">
-        <div className="mx-auto max-w-3xl bg-white p-6 rounded-md border">
+        <div className="mx-auto max-w-3xl p-6 rounded-md">
           <h2 className="text-xl font-semibold mb-4">Company & Tax Settings</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

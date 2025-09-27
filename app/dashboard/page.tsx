@@ -37,6 +37,7 @@ function formatCurrency(amount: number, currency: string = "INR") {
 
 import { Toaster } from "@/components/ui/toaster"
 import DashboardClientWrapper from "@/app/dashboard/dashboard-client-wrapper"
+import DashboardAuthWrapper from "./dashboard-auth-wrapper" // Import the new wrapper
 
 export default async function DashboardPage() {
   const { invoices, quotations, clients, status, message } = await getDashboardData()
@@ -64,48 +65,50 @@ export default async function DashboardPage() {
   const recentInvoices = invoices.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()).slice(0, 5)
 
   return (
-    <main className="flex min-h-[80vh]">
-      <SidebarNav />
-      <section className="flex-1 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-balance">Dashboard</h1>
-          <div className="flex gap-2">
-            <Button asChild className="bg-primary text-primary-foreground">
-              <Link href="/quotations">New Quotation</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/invoices">New Invoice</Link>
-            </Button>
+    <DashboardAuthWrapper> {/* Wrap the entire content */}
+      <main className="flex min-h-[80vh]">
+        <SidebarNav />
+        <section className="flex-1 p-6">
+          <header className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-balance">Dashboard</h1>
+            <div className="flex gap-2">
+              <Button asChild className="bg-primary text-primary-foreground">
+                <Link href="/quotations">New Quotation</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/invoices">New Invoice</Link>
+              </Button>
+            </div>
+          </header>
+
+          <div className="mt-6">
+            <StatsCards stats={stats} />
           </div>
-        </header>
 
-        <div className="mt-6">
-          <StatsCards stats={stats} />
-        </div>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-muted-foreground">Recent Quotations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RecentQuotationsList quotations={recentQuotations} />
+              </CardContent>
+            </Card>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Recent Quotations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RecentQuotationsList quotations={recentQuotations} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Recent Invoices</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RecentInvoicesList invoices={recentInvoices} />
-            </CardContent>
-          </Card>
-        </div>
-        <DashboardClientWrapper status={status} message={message} />
-      </section>
-      <Toaster />
-    </main>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-muted-foreground">Recent Invoices</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RecentInvoicesList invoices={recentInvoices} />
+              </CardContent>
+            </Card>
+          </div>
+          <DashboardClientWrapper status={status} message={message} />
+        </section>
+        <Toaster />
+      </main>
+    </DashboardAuthWrapper>
   )
 }
 

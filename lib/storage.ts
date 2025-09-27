@@ -15,8 +15,13 @@ const DEFAULT_COMPANY: CompanyInfo = {
 }
 
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
+  let finalUrl = url;
+  // If running on the server, use a relative path for internal API calls
+  // This avoids issues with the server trying to fetch from itself via HTTP
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const res = await fetch(`${baseUrl}${url}`, options);
+  finalUrl = `${baseUrl}${url}`;
+
+  const res = await fetch(finalUrl, options);
   if (!res.ok) {
     throw new Error(`API request failed: ${res.statusText}`);
   }

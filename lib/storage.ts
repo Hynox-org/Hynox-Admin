@@ -1,4 +1,4 @@
-import type { Invoice, Quotation, CompanyInfo, Client } from "@/lib/types"
+import type { Invoice, Quotation, CompanyInfo, Client, Service } from "@/lib/types"
 
 const DEFAULT_COMPANY: CompanyInfo = {
   name: "the black crest",
@@ -87,6 +87,10 @@ export async function saveQuote(q: Quotation) {
 
 export async function listClients(): Promise<Client[]> {
   return api<Client[]>("/api/clients");
+}
+
+export async function listServices(): Promise<Service[]> {
+  return api<Service[]>("/api/services");
 }
 
 export async function getCompany(): Promise<CompanyInfo> {

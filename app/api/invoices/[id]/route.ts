@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const invoice: Invoice = await req.json();
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    await db.collection("invoices").updateOne({ id: params.id }, { $set: invoice });
+    await db.collection("invoices").updateOne({ _id: new ObjectId(params.id) }, { $set: invoice });
     return NextResponse.json(invoice);
   } catch (e) {
     console.error(e);

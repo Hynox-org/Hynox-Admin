@@ -3,7 +3,7 @@ import QuotationForm from "@/components/quotation-form"
 
 export default function NewQuotationPage() {
   return (
-    <main className="flex min-h-[80vh]">
+    <main className="flex h-screen">
       <SidebarNav />
       <section className="flex-1 p-6">
         <header className="mb-4">

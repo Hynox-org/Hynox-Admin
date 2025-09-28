@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { saveQuote, getCompany, getDefaultTax, getDefaultCurrency, saveDefaultCurrency, saveDefaultTax } from "@/lib/storage"
-import type { LineItem, Quotation, CompanyInfo } from "@/lib/types"
+import { saveQuote, getCompany, getDefaultTax, getDefaultCurrency, saveDefaultCurrency, saveDefaultTax, listClients, listServices } from "@/lib/storage"
+import type { LineItem, Quotation, CompanyInfo, Client, Service } from "@/lib/types"
 import { toast } from "@/hooks/use-toast"
 
 function money(n: number, currency: string) {
@@ -26,18 +27,24 @@ export default function QuotationForm() {
   const [currency, setCurrency] = useState("INR")
   const [taxRate, setTaxRate] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [clients, setClients] = useState<Client[]>([])
+  const [services, setServices] = useState<Service[]>([])
 
   useEffect(() => {
     async function fetchInitialData() {
       try {
-        const [companyData, defaultCurrency, defaultTax] = await Promise.all([
+        const [companyData, defaultCurrency, defaultTax, fetchedClients, fetchedServices] = await Promise.all([
           getCompany(),
           getDefaultCurrency(),
           getDefaultTax(),
+          listClients(),
+          listServices(),
         ])
         setCompany(companyData)
         setCurrency(defaultCurrency)
         setTaxRate(defaultTax)
+        setClients(fetchedClients)
+        setServices(fetchedServices)
         setFrom({
           name: companyData.name || "Hynox",
           email: companyData.email || "",
@@ -70,7 +77,7 @@ export default function QuotationForm() {
   const [discount, setDiscount] = useState(0)
   const [notes, setNotes] = useState("")
 
-  const [items, setItems] = useState<LineItem[]>([{ id: uuid(), description: "", quantity: 1, unitPrice: 0 }])
+  const [items, setItems] = useState<LineItem[]>([{ id: uuid(), description: "", quantity: 1, unitPrice: 0, selectedServiceId: undefined }])
 
   const subtotal = useMemo(
     () => items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0),
@@ -203,19 +210,19 @@ export default function QuotationForm() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <Label>Name</Label>
-            <Input value={from.name} onChange={(e) => setFrom({ ...from, name: e.target.value })} />
+            <Input value={from.name} readOnly />
           </div>
           <div>
             <Label>Email</Label>
-            <Input value={from.email} onChange={(e) => setFrom({ ...from, email: e.target.value })} />
+            <Input value={from.email} readOnly />
           </div>
           <div className="md:col-span-2">
             <Label>Address</Label>
-            <Textarea value={from.address} onChange={(e) => setFrom({ ...from, address: e.target.value })} />
+            <Textarea value={from.address} readOnly />
           </div>
           <div>
             <Label>Phone</Label>
-            <Input value={from.phone} onChange={(e) => setFrom({ ...from, phone: e.target.value })} />
+            <Input value={from.phone} readOnly />
           </div>
         </CardContent>
       </Card>
@@ -225,6 +232,31 @@ export default function QuotationForm() {
           <CardTitle className="text-lg">Client</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Label htmlFor="client-select">Select Existing Client</Label>
+            <Select onValueChange={(clientId) => {
+              const selectedClient = clients.find(c => c._id === clientId)
+              if (selectedClient) {
+                setTo({
+                  name: selectedClient.name,
+                  email: selectedClient.email || "",
+                  address: selectedClient.address || "",
+                  phone: selectedClient.phone || "",
+                })
+              }
+            }}>
+              <SelectTrigger id="client-select">
+                <SelectValue placeholder="Select a client (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client._id} value={client._id || ""}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>Name</Label>
             <Input value={to.name} onChange={(e) => setTo({ ...to, name: e.target.value })} />
@@ -259,14 +291,45 @@ export default function QuotationForm() {
         </CardHeader>
         <CardContent className="space-y-3">
           {items.map((it) => (
-            <div key={it.id} className="grid gap-3 md:grid-cols-12">
+            <div key={it.id} className="grid gap-3 md:grid-cols-12 items-end">
               <div className="md:col-span-6">
                 <Label>Description</Label>
-                <Input
-                  value={it.description}
-                  onChange={(e) => updateItem(it.id, { description: e.target.value })}
-                  placeholder="Service or item description"
-                />
+                <Select onValueChange={(value) => {
+                  if (value === "custom") {
+                    updateItem(it.id, { selectedServiceId: undefined, description: "", unitPrice: 0 });
+                  } else {
+                    const selectedService = services.find(s => s._id === value);
+                    if (selectedService) {
+                      updateItem(it.id, {
+                        selectedServiceId: selectedService._id,
+                        description: selectedService.name,
+                        unitPrice: selectedService.price,
+                      });
+                    }
+                  }
+                }} value={it.selectedServiceId || "custom"}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a service or type custom">
+                      {it.selectedServiceId ? services.find(s => s._id === it.selectedServiceId)?.name : it.description || "Select a service or type custom"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services.map((service) => (
+                      <SelectItem key={service._id} value={service._id || ""}>
+                        {service.name} ({money(service.price, currency)})
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Other / Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* {it.selectedServiceId === undefined && ( */}
+                  <Input
+                    value={it.description}
+                    onChange={(e) => updateItem(it.id, { description: e.target.value })}
+                    placeholder="Service or item description"
+                    className="mt-2"
+                  />
+                {/* )} */}
               </div>
               <div className="md:col-span-2">
                 <Label>Qty</Label>

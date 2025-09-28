@@ -91,7 +91,7 @@ export default function AdminsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-[80vh]">
+      <main className="flex h-screen">
         <SidebarNav />
         <section className="flex-1 p-6">
           <h1 className="text-2xl font-semibold">Admins</h1>
@@ -103,7 +103,7 @@ export default function AdminsPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-[80vh]">
+      <main className="flex h-screen">
         <SidebarNav />
         <section className="flex-1 p-6">
           <h1 className="text-2xl font-semibold">Admins</h1>
@@ -114,7 +114,7 @@ export default function AdminsPage() {
   }
 
   return (
-    <main className="flex min-h-[80vh]">
+    <main className="flex h-screen">
       <SidebarNav />
       <section className="flex-1 p-6">
         <header className="flex items-center justify-between">

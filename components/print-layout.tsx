@@ -11,7 +11,7 @@ type Props = {
   company: CompanyInfo
   billToName: string
   billToAddress?: string
-  items: LineItem[]
+  items: LineItem[] | undefined | null
   showTax: boolean
   taxPercent?: number
   notes?: string
@@ -37,7 +37,7 @@ export default function PrintLayout({
   const total = subtotal + tax
 
   return (
-    <div className={cn("bg-white text-foreground p-6 md:p-10 mx-auto w-full max-w-4xl", className)}>
+    <div className={cn("bg-white text-black p-6 md:p-10 mx-auto w-full max-w-4xl", className)}>
       {/* Header */}
       <header className="flex items-start justify-between gap-6">
         <div className="flex items-center gap-4">
@@ -100,7 +100,7 @@ export default function PrintLayout({
             </tr>
           </thead>
           <tbody>
-            {items.map((it, idx) => {
+            {(items || []).map((it, idx) => {
               const qty = Number(it.quantity) || 0
               const unit = Number(it.unitPrice) || 0
               const amt = qty * unit

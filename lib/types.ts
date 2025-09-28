@@ -3,6 +3,7 @@ export type LineItem = {
   description: string
   quantity: number
   unitPrice: number
+  selectedServiceId?: string
 }
 
 export type PartyInfo = {
@@ -62,7 +63,10 @@ export type Quotation = {
   status: "Draft" | "Sent" | "Accepted" | "Rejected"
 }
 
-export function calcSubtotal(items: LineItem[]): number {
+export function calcSubtotal(items: LineItem[] | undefined | null): number {
+  if (!items || !Array.isArray(items)) {
+    return 0;
+  }
   return Number(items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0).toFixed(2))
 }
 

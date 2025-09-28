@@ -6,7 +6,7 @@ import PrintLayout from "@/components/print-layout"
 import ShareButtons from "@/components/share-buttons"
 import { Button } from "@/components/ui/button"
 import { getCompany, getQuote } from "@/lib/storage"
-import type { Quotation } from "@/lib/types"
+import type { CompanyInfo, Quotation } from "@/lib/types"
 
 function money(n: number, currency: string) {
   try {
@@ -20,21 +20,26 @@ export default function QuotePrintPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const [quote, setQuote] = useState<Quotation | null>(null)
+  const [company, setCompany] = useState<CompanyInfo | null>(null)
   const [shareUrl, setShareUrl] = useState<string>("")
 
   useEffect(() => {
-    const q = getQuote(params.id)
-    setQuote(q ?? null)
-    if (typeof window !== "undefined") setShareUrl(window.location.href)
+    async function fetchData() {
+      const q = await getQuote(params.id)
+      setQuote(q ?? null)
+      const c = await getCompany()
+      setCompany(c ?? null)
+      if (typeof window !== "undefined") setShareUrl(window.location.href)
+    }
+    fetchData()
   }, [params.id])
 
-  const company = getCompany()
   const title = useMemo(() => (quote ? `Quotation ${quote.number}` : "Quotation"), [quote])
 
-  if (!quote) {
+  if (!quote || !company) {
     return (
       <main className="p-6">
-        <p className="text-sm text-muted-foreground">Quotation not found.</p>
+        <p className="text-sm text-muted-foreground">Loading quotation...</p>
         <Button variant="secondary" className="mt-4" onClick={() => router.push("/quotations")}>
           Back to Quotations
         </Button>
@@ -62,7 +67,7 @@ export default function QuotePrintPage() {
           company={company}
           billToName={quote.to?.name || "-"}
           billToAddress={quote.to?.address}
-          items={quote.items}
+          items={quote.items || []}
           showTax
           taxPercent={quote.taxRate || 0}
           notes={quote.notes}
@@ -71,7 +76,11 @@ export default function QuotePrintPage() {
       <style jsx global>{`
         @media print {
           .no-print { display: none !important; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
+            color: black !important; /* Ensure text is black for printing */
+          }
         }
       `}</style>
       <title>{title}</title>

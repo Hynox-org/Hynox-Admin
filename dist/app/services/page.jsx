@@ -56,7 +56,7 @@ export default function ServicesPage() {
         fetchServices();
     }, []);
     if (loading) {
-        return (<main className="flex min-h-[80vh]">
+        return (<main className="flex h-screen">
         <SidebarNav />
         <section className="flex-1 p-6">
           <h1 className="text-2xl font-semibold">Services</h1>
@@ -65,7 +65,7 @@ export default function ServicesPage() {
       </main>);
     }
     if (error) {
-        return (<main className="flex min-h-[80vh]">
+        return (<main className="flex h-screen">
         <SidebarNav />
         <section className="flex-1 p-6">
           <h1 className="text-2xl font-semibold">Services</h1>
@@ -73,7 +73,7 @@ export default function ServicesPage() {
         </section>
       </main>);
     }
-    return (<main className="flex min-h-[80vh]">
+    return (<main className="flex h-screen">
       <SidebarNav />
       <section className="flex-1 p-6">
         <header className="flex items-center justify-between">

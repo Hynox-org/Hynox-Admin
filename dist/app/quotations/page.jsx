@@ -25,7 +25,7 @@ export default function QuotationsPage() {
         });
         fetchQuotes();
     }, []);
-    return (<main className="flex min-h-[80vh]">
+    return (<main className="flex h-screen">
       <SidebarNav />
       <section className="flex-1 p-6">
         <header className="flex items-center justify-between">

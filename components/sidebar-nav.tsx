@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const items = [
   { href: "/dashboard", label: "Dashboard" },
@@ -12,18 +12,18 @@ const items = [
   { href: "/invoices", label: "Invoices" },
   { href: "/clients", label: "Clients" },
   { href: "/services", label: "Services" },
-  { href: "/settings", label: "Settings" },
   { href: "/admins", label: "Admins" },
-]
+  { href: "/settings", label: "Settings" },
+];
 
 export function SidebarNav() {
-  const pathname = usePathname()
-  const router = useRouter()
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleLogout = async () => {
-    localStorage.removeItem("auth-token")
-    router.push("/login")
-  }
+    localStorage.removeItem("auth-token");
+    router.push("/login");
+  };
 
   return (
     <aside className="w-full md:w-56 shrink-0 border-r bg-card flex flex-col">
@@ -40,7 +40,7 @@ export function SidebarNav() {
       <nav className="p-4 flex-grow">
         <ul className="space-y-1">
           {items.map((item) => {
-            const active = pathname === item.href
+            const active = pathname === item.href;
             return (
               <li key={item.href}>
                 <Link
@@ -55,7 +55,7 @@ export function SidebarNav() {
                   {item.label}
                 </Link>
               </li>
-            )
+            );
           })}
         </ul>
       </nav>
@@ -65,5 +65,5 @@ export function SidebarNav() {
         </Button>
       </div>
     </aside>
-  )
+  );
 }

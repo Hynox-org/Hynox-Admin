@@ -57,7 +57,7 @@ export default function DashboardPage() {
         ];
         const recentQuotations = quotations.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()).slice(0, 5);
         const recentInvoices = invoices.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()).slice(0, 5);
-        return (<main className="flex min-h-[80vh]">
+        return (<main className="flex h-screen">
       <SidebarNav />
       <section className="flex-1 p-6">
         <header className="flex items-center justify-between">

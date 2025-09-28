@@ -13,7 +13,7 @@ export default function HomePage() {
         Your trusted partner for innovative solutions.
       </p>
       <div className="flex gap-4">
-        <Button asChild className="bg-primary text-primary-foreground">
+        <Button asChild className="bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90">
           <Link href="/dashboard">Go to Dashboard</Link>
         </Button>
         <Button asChild variant="outline">

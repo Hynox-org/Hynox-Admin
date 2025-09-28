@@ -68,7 +68,7 @@ export default function SettingsPage() {
         });
     }
     if (loading) {
-        return (<main className="flex min-h-[80vh]">
+        return (<main className="flex h-screen">
         <SidebarNav />
         <section className="flex-1 p-6">
           <h1 className="text-2xl font-semibold">Settings</h1>
@@ -78,7 +78,7 @@ export default function SettingsPage() {
     }
     if (!company)
         return null;
-    return (<main className="flex min-h-[80vh]">
+    return (<main className="flex h-screen">
       <SidebarNav />
       <section className="flex-1 p-6">
         <div className="mx-auto max-w-3xl p-6 rounded-md">

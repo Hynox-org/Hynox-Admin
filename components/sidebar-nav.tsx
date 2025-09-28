@@ -27,7 +27,7 @@ export function SidebarNav() {
 
   return (
     <aside className="w-full md:w-56 shrink-0 border-r bg-card flex flex-col">
-      <div className="p-4">
+      <div className="p-4 flex justify-center">
         <Link href="/dashboard">
           <Image
             src="/images/hynox_logo-transparent-white.png"

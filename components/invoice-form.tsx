@@ -45,7 +45,11 @@ function money(n: number, currency: string) {
   }
 }
 
-export default function InvoiceForm() {
+interface InvoiceFormProps {
+  initialData?: Invoice;
+}
+
+export default function InvoiceForm({ initialData }: InvoiceFormProps) {
   const router = useRouter();
   const [company, setCompany] = useState<CompanyInfo>({
     name: "Hynox",
@@ -64,6 +68,24 @@ export default function InvoiceForm() {
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+
+  const [invoiceId, setInvoiceId] = useState<string | undefined>(initialData?.id);
+  const [from, setFrom] = useState(initialData?.from || {
+    name: company.name || "Hynox",
+    email: company.email || "",
+    address: company.address || "",
+    phone: company.phone || "",
+  });
+  const [to, setTo] = useState(initialData?.to || { name: "", email: "", address: "", phone: "" });
+  const [issueDate, setIssueDate] = useState(initialData?.issueDate || new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(initialData?.dueDate || "");
+  const [number, setNumber] = useState(initialData?.number || `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`);
+  const [discount, setDiscount] = useState(initialData?.discount || 0);
+  const [notes, setNotes] = useState(initialData?.notes || "");
+
+  const [items, setItems] = useState<LineItem[]>(initialData?.items || [
+    { id: uuid(), description: "", quantity: 1, unitPrice: 0, selectedServiceId: undefined },
+  ]);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -86,12 +108,15 @@ export default function InvoiceForm() {
         setTaxRate(defaultTax);
         setClients(fetchedClients);
         setServices(fetchedServices);
-        setFrom({
-          name: companyData.name || "Hynox",
-          email: companyData.email || "",
-          address: companyData.address || "",
-          phone: companyData.phone || "",
-        });
+
+        if (!initialData) {
+          setFrom({
+            name: companyData.name || "Hynox",
+            email: companyData.email || "",
+            address: companyData.address || "",
+            phone: companyData.phone || "",
+          });
+        }
       } catch (e: any) {
         toast({
           title: "Error loading initial data",
@@ -103,29 +128,7 @@ export default function InvoiceForm() {
       }
     }
     fetchInitialData();
-  }, []);
-
-  const [from, setFrom] = useState({
-    name: company.name || "Hynox",
-    email: company.email || "",
-    address: company.address || "",
-    phone: company.phone || "",
-  });
-  const [to, setTo] = useState({ name: "", email: "", address: "", phone: "" });
-  const [issueDate, setIssueDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
-  const [dueDate, setDueDate] = useState("");
-  const [number, setNumber] = useState(
-    () =>
-      `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`
-  );
-  const [discount, setDiscount] = useState(0);
-  const [notes, setNotes] = useState("");
-
-  const [items, setItems] = useState<LineItem[]>([
-    { id: uuid(), description: "", quantity: 1, unitPrice: 0, selectedServiceId: undefined },
-  ]);
+  }, [initialData]); // Add initialData to dependency array
 
   const subtotal = useMemo(
     () =>
@@ -159,9 +162,9 @@ export default function InvoiceForm() {
     setItems((prev) => prev.filter((it) => it.id !== id));
   }
 
-  function onSave(printAfter = false) {
+  async function onSave(printAfter = false) {
     const inv: Invoice = {
-      id: uuid(),
+      id: invoiceId || uuid(), // Use existing ID if available, otherwise generate new
       number,
       issueDate,
       dueDate,
@@ -178,13 +181,30 @@ export default function InvoiceForm() {
       status: "Pending",
     };
     try {
-      saveInvoice(inv);
+      const apiPath = invoiceId ? `/api/invoices/${invoiceId}` : "/api/invoices";
+      const method = invoiceId ? "PUT" : "POST";
+
+      const response = await fetch(apiPath, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(inv),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save invoice");
+      }
+
+      const savedInvoice = await response.json();
+
       toast({
         title: "Invoice saved successfully!",
-        description: `Invoice ${inv.number} has been saved.`,
+        description: `Invoice ${savedInvoice.number} has been saved.`,
       });
       if (printAfter) {
-        router.push(`/invoices/print/${inv.id}`);
+        router.push(`/invoices/print/${savedInvoice.id}`);
       } else {
         router.push("/invoices");
       }

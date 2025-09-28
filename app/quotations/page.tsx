@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { listQuotes } from "@/lib/storage"
+
 import { useEffect, useState } from "react"
 import { Quotation } from "@/lib/types" // Import Quotation type
 
@@ -15,11 +15,20 @@ export default function QuotationsPage() {
 
   useEffect(() => {
     const fetchQuotes = async () => {
-      const quotes = await listQuotes()
-      setRows(quotes)
-    }
-    fetchQuotes()
-  }, [])
+      try {
+        const response = await fetch("/api/quotations");
+        if (!response.ok) {
+          throw new Error("Failed to fetch quotations");
+        }
+        const quotations: Quotation[] = await response.json();
+        setRows(quotations);
+      } catch (error) {
+        console.error("Error fetching quotations:", error);
+        // Optionally, show a toast notification for the error
+      }
+    };
+    fetchQuotes();
+  }, []);
 
   return (
     <main className="flex h-screen">
@@ -62,6 +71,9 @@ export default function QuotationsPage() {
                     <TableCell className="flex gap-2">
                       <Button size="sm" variant="secondary" onClick={() => router.push(`/quotations/print/${q.id}`)}>
                         View / Print
+                      </Button>
+                      <Button size="sm" onClick={() => router.push(`/quotations/${q.id}/edit`)}>
+                        Edit
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => router.push(`/quotations/print/${q.id}`)}>
                         Share

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { listInvoices } from "@/lib/storage"
+
 import { useEffect, useState } from "react"
 import { Invoice } from "@/lib/types"
 
@@ -15,8 +15,17 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     const fetchInvoices = async () => {
-      const invoices = await listInvoices();
-      setRows(invoices);
+      try {
+        const response = await fetch("/api/invoices");
+        if (!response.ok) {
+          throw new Error("Failed to fetch invoices");
+        }
+        const invoices: Invoice[] = await response.json();
+        setRows(invoices);
+      } catch (error) {
+        console.error("Error fetching invoices:", error);
+        // Optionally, show a toast notification for the error
+      }
     };
     fetchInvoices();
   }, []);
@@ -64,6 +73,9 @@ export default function InvoicesPage() {
                     <TableCell className="flex gap-2">
                       <Button size="sm" variant="secondary" onClick={() => router.push(`/invoices/print/${inv.id}`)}>
                         View / Print
+                      </Button>
+                      <Button size="sm" onClick={() => router.push(`/invoices/${inv.id}/edit`)}>
+                        Edit
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => router.push(`/invoices/print/${inv.id}`)}>
                         Share

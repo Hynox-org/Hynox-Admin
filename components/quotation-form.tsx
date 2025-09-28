@@ -21,7 +21,11 @@ function money(n: number, currency: string) {
   }
 }
 
-export default function QuotationForm() {
+interface QuotationFormProps {
+  initialData?: Quotation;
+}
+
+export default function QuotationForm({ initialData }: QuotationFormProps) {
   const router = useRouter()
   const [company, setCompany] = useState<CompanyInfo>({ name: "Hynox", email: "", address: "", phone: "", gstNumber: "", bankName: "", accountNumber: "", ifsc: "", branch: "", upi: "" })
   const [currency, setCurrency] = useState("INR")
@@ -29,6 +33,24 @@ export default function QuotationForm() {
   const [loading, setLoading] = useState(true)
   const [clients, setClients] = useState<Client[]>([])
   const [services, setServices] = useState<Service[]>([])
+
+  const [quotationId, setQuotationId] = useState<string | undefined>(initialData?.id);
+  const [from, setFrom] = useState(initialData?.from || {
+    name: company.name || "Hynox",
+    email: company.email || "",
+    address: company.address || "",
+    phone: company.phone || "",
+  });
+  const [to, setTo] = useState(initialData?.to || { name: "", email: "", address: "", phone: "" });
+  const [issueDate, setIssueDate] = useState(initialData?.issueDate || new Date().toISOString().slice(0, 10));
+  const [validUntil, setValidUntil] = useState(initialData?.validUntil || "");
+  const [number, setNumber] = useState(initialData?.number || `QTN-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`);
+  const [discount, setDiscount] = useState(initialData?.discount || 0);
+  const [notes, setNotes] = useState(initialData?.notes || "");
+
+  const [items, setItems] = useState<LineItem[]>(initialData?.items || [
+    { id: uuid(), description: "", quantity: 1, unitPrice: 0, selectedServiceId: undefined },
+  ]);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -39,45 +61,33 @@ export default function QuotationForm() {
           getDefaultTax(),
           listClients(),
           listServices(),
-        ])
-        setCompany(companyData)
-        setCurrency(defaultCurrency)
-        setTaxRate(defaultTax)
-        setClients(fetchedClients)
-        setServices(fetchedServices)
-        setFrom({
-          name: companyData.name || "Hynox",
-          email: companyData.email || "",
-          address: companyData.address || "",
-          phone: companyData.phone || "",
-        })
+        ]);
+        setCompany(companyData);
+        setCurrency(defaultCurrency);
+        setTaxRate(defaultTax);
+        setClients(fetchedClients);
+        setServices(fetchedServices);
+
+        if (!initialData) {
+          setFrom({
+            name: companyData.name || "Hynox",
+            email: companyData.email || "",
+            address: companyData.address || "",
+            phone: companyData.phone || "",
+          });
+        }
       } catch (e: any) {
         toast({
           title: "Error loading initial data",
           description: e.message,
           variant: "destructive",
-        })
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    fetchInitialData()
-  }, [])
-
-  const [from, setFrom] = useState({
-    name: company.name || "Hynox",
-    email: company.email || "",
-    address: company.address || "",
-    phone: company.phone || "",
-  })
-  const [to, setTo] = useState({ name: "", email: "", address: "", phone: "" })
-  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [validUntil, setValidUntil] = useState("")
-  const [number, setNumber] = useState(() => `QTN-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`)
-  const [discount, setDiscount] = useState(0)
-  const [notes, setNotes] = useState("")
-
-  const [items, setItems] = useState<LineItem[]>([{ id: uuid(), description: "", quantity: 1, unitPrice: 0, selectedServiceId: undefined }])
+    fetchInitialData();
+  }, [initialData]); // Add initialData to dependency array
 
   const subtotal = useMemo(
     () => items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0),
@@ -96,9 +106,9 @@ export default function QuotationForm() {
     setItems((prev) => prev.filter((it) => it.id !== id))
   }
 
-  function onSave(printAfter = false) {
+  async function onSave(printAfter = false) {
     const q: Quotation = {
-      id: uuid(),
+      id: quotationId || uuid(), // Use existing ID if available, otherwise generate new
       number,
       issueDate,
       validUntil,
@@ -113,24 +123,41 @@ export default function QuotationForm() {
       tax: Number(tax.toFixed(2)),
       total: Number(total.toFixed(2)),
       status: "Draft",
-    }
+    };
     try {
-      saveQuote(q)
+      const apiPath = quotationId ? `/api/quotations/${quotationId}` : "/api/quotations";
+      const method = quotationId ? "PUT" : "POST";
+
+      const response = await fetch(apiPath, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(q),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save quotation");
+      }
+
+      const savedQuotation = await response.json();
+
       toast({
         title: "Quotation saved successfully!",
-        description: `Quotation ${q.number} has been saved.`,
-      })
+        description: `Quotation ${savedQuotation.number} has been saved.`,
+      });
       if (printAfter) {
-        router.push(`/quotations/print/${q.id}`)
+        router.push(`/quotations/print/${savedQuotation.id}`);
       } else {
-        router.push("/quotations")
+        router.push("/quotations");
       }
     } catch (e: any) {
       toast({
         title: "Error saving quotation",
         description: e.message,
         variant: "destructive",
-      })
+      });
     }
   }
 

@@ -8,27 +8,89 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { useEffect, useState } from "react"
 import { Invoice } from "@/lib/types"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
+
+import { toast } from "@/hooks/use-toast"
 
 export default function InvoicesPage() {
   const router = useRouter()
   const [rows, setRows] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
+  const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null)
+
+  const fetchInvoices = async () => {
+    try {
+      const response = await fetch("/api/invoices");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const invoices: Invoice[] = await response.json();
+      setRows(invoices);
+      toast({
+        title: "Invoices loaded successfully!",
+        description: `Found ${invoices.length} invoices.`,
+      });
+    } catch (e: any) {
+      setError(e.message);
+      toast({
+        title: "Error fetching invoices",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const response = await fetch("/api/invoices");
-        if (!response.ok) {
-          throw new Error("Failed to fetch invoices");
-        }
-        const invoices: Invoice[] = await response.json();
-        setRows(invoices);
-      } catch (error) {
-        console.error("Error fetching invoices:", error);
-        // Optionally, show a toast notification for the error
-      }
-    };
     fetchInvoices();
   }, []);
+
+  const handleDeleteInvoice = async (id: string, hardDelete: boolean = false) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}${hardDelete ? '?hardDelete=true' : ''}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast({
+        title: `Invoice ${hardDelete ? 'permanently deleted' : 'soft-deleted'} successfully!`,
+        description: `Invoice #${invoiceToDelete?.number || ''} has been ${hardDelete ? 'permanently deleted' : 'soft-deleted'}.`,
+      });
+      setIsSoftDeleteDialogOpen(false);
+      setIsHardDeleteDialogOpen(false);
+      fetchInvoices(); // Refresh the list
+    } catch (e: any) {
+      toast({
+        title: "Error deleting invoice",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <main className="flex h-screen">
@@ -49,7 +111,7 @@ export default function InvoicesPage() {
                 <TableHead>Client</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -70,16 +132,70 @@ export default function InvoicesPage() {
                       )}
                     </TableCell>
                     <TableCell>{inv.status}</TableCell>
-                    <TableCell className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => router.push(`/invoices/print/${inv.id}`)}>
-                        View / Print
-                      </Button>
-                      <Button size="sm" onClick={() => router.push(`/invoices/${inv.id}/edit`)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => router.push(`/invoices/print/${inv.id}`)}>
-                        Share
-                      </Button>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/invoices/print/${inv.id}`)}>
+                            View / Print
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/invoices/${inv.id}/edit`)}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/invoices/print/${inv.id}`)}>
+                            Share
+                          </DropdownMenuItem>
+                          <AlertDialog open={isSoftDeleteDialogOpen && invoiceToDelete?.id === inv.id} onOpenChange={setIsSoftDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setInvoiceToDelete(inv); }}>
+                                Soft Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure you want to soft delete this invoice?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action will mark invoice #{invoiceToDelete?.number || ''} as deleted, but keep its data for potential recovery.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setInvoiceToDelete(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => invoiceToDelete && handleDeleteInvoice(invoiceToDelete.id, false)}>
+                                  Soft Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
+                          <AlertDialog open={isHardDeleteDialogOpen && invoiceToDelete?.id === inv.id} onOpenChange={setIsHardDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setInvoiceToDelete(inv); }}>
+                                Hard Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure you want to hard delete this invoice?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete invoice
+                                  #{invoiceToDelete?.number || ''} and remove its data from our servers.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setInvoiceToDelete(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => invoiceToDelete && handleDeleteInvoice(invoiceToDelete.id, true)}>
+                                  Hard Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

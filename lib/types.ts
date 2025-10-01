@@ -42,7 +42,8 @@ export type Invoice = {
   subtotal: number
   tax: number
   total: number
-  status: "Draft" | "Pending" | "Sent" | "Paid"
+  status: "Draft" | "Pending" | "Sent" | "Paid",
+  deletedAt?: Date,
 }
 
 export type Quotation = {
@@ -60,7 +61,8 @@ export type Quotation = {
   subtotal: number
   tax: number
   total: number
-  status: "Draft" | "Sent" | "Accepted" | "Rejected"
+  status: "Draft" | "Sent" | "Accepted" | "Rejected",
+  deletedAt?: Date,
 }
 
 export function calcSubtotal(items: LineItem[] | undefined | null): number {
@@ -80,6 +82,7 @@ export type Client = {
   email?: string;
   address?: string;
   phone?: string;
+  deletedAt?: Date;
 };
 
 export type Service = {
@@ -87,4 +90,5 @@ export type Service = {
   name: string;
   description?: string;
   price: number;
+  deletedAt?: Date;
 };

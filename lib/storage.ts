@@ -21,7 +21,7 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   finalUrl = `${baseUrl}${url}`;
 
-  const res = await fetch(finalUrl, options);
+  const res = await fetch(finalUrl, { ...options, next: { revalidate: 0 } });
   if (!res.ok) {
     throw new Error(`API request failed: ${res.statusText}`);
   }

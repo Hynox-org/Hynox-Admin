@@ -8,27 +8,113 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { useEffect, useState } from "react"
 import { Quotation } from "@/lib/types" // Import Quotation type
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
+
+import { toast } from "@/hooks/use-toast"
 
 export default function QuotationsPage() {
   const router = useRouter()
   const [rows, setRows] = useState<Quotation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
+  const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
+  const [quotationToDelete, setQuotationToDelete] = useState<Quotation | null>(null)
+
+  const fetchQuotes = async () => {
+    try {
+      const response = await fetch("/api/quotations");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const quotations: Quotation[] = await response.json();
+      setRows(quotations);
+      toast({
+        title: "Quotations loaded successfully!",
+        description: `Found ${quotations.length} quotations.`,
+      });
+    } catch (e: any) {
+      setError(e.message);
+      toast({
+        title: "Error fetching quotations",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchQuotes = async () => {
-      try {
-        const response = await fetch("/api/quotations");
-        if (!response.ok) {
-          throw new Error("Failed to fetch quotations");
-        }
-        const quotations: Quotation[] = await response.json();
-        setRows(quotations);
-      } catch (error) {
-        console.error("Error fetching quotations:", error);
-        // Optionally, show a toast notification for the error
-      }
-    };
     fetchQuotes();
   }, []);
+
+  const handleDeleteQuotation = async (id: string, hardDelete: boolean = false) => {
+    try {
+      const response = await fetch(`/api/quotations/${id}${hardDelete ? '?hardDelete=true' : ''}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast({
+        title: `Quotation ${hardDelete ? 'permanently deleted' : 'soft-deleted'} successfully!`,
+        description: `Quotation #${quotationToDelete?.number || ''} has been ${hardDelete ? 'permanently deleted' : 'soft-deleted'}.`,
+      });
+      setIsSoftDeleteDialogOpen(false);
+      setIsHardDeleteDialogOpen(false);
+      fetchQuotes(); // Refresh the list
+    } catch (e: any) {
+      toast({
+        title: "Error deleting quotation",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="flex h-screen">
+        <SidebarNav />
+        <section className="flex-1 p-6">
+          <h1 className="text-2xl font-semibold">Quotations</h1>
+          <p>Loading quotations...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="flex h-screen">
+        <SidebarNav />
+        <section className="flex-1 p-6">
+          <h1 className="text-2xl font-semibold">Quotations</h1>
+          <p className="text-red-500">Error: {error}</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-screen">
@@ -49,7 +135,7 @@ export default function QuotationsPage() {
                 <TableHead>Client</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -68,16 +154,70 @@ export default function QuotationsPage() {
                       {new Intl.NumberFormat(undefined, { style: "currency", currency: q.currency }).format(q.total)}
                     </TableCell>
                     <TableCell>{q.status}</TableCell>
-                    <TableCell className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => router.push(`/quotations/print/${q.id}`)}>
-                        View / Print
-                      </Button>
-                      <Button size="sm" onClick={() => router.push(`/quotations/${q.id}/edit`)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => router.push(`/quotations/print/${q.id}`)}>
-                        Share
-                      </Button>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/quotations/print/${q.id}`)}>
+                            View / Print
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/quotations/${q.id}/edit`)}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/quotations/print/${q.id}`)}>
+                            Share
+                          </DropdownMenuItem>
+                          <AlertDialog open={isSoftDeleteDialogOpen && quotationToDelete?.id === q.id} onOpenChange={setIsSoftDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQuotationToDelete(q); }}>
+                                Soft Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure you want to soft delete this quotation?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action will mark quotation #{quotationToDelete?.number || ''} as deleted, but keep its data for potential recovery.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setQuotationToDelete(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => quotationToDelete && handleDeleteQuotation(quotationToDelete.id, false)}>
+                                  Soft Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
+                          <AlertDialog open={isHardDeleteDialogOpen && quotationToDelete?.id === q.id} onOpenChange={setIsHardDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQuotationToDelete(q); }}>
+                                Hard Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure you want to hard delete this quotation?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete quotation
+                                  #{quotationToDelete?.number || ''} and remove its data from our servers.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setQuotationToDelete(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => quotationToDelete && handleDeleteQuotation(quotationToDelete.id, true)}>
+                                  Hard Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    const quotation = await db.collection("quotations").findOne({ _id: new ObjectId(params.id) });
+    const quotation = await db.collection("quotations").findOne({ _id: new ObjectId(params.id), deletedAt: null });
     if (!quotation) {
       return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
     }
@@ -17,6 +17,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Unable to fetch quotation" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("hynox-billing");
+    const { searchParams } = new URL(req.url);
+    const hardDelete = searchParams.get("hardDelete") === "true";
+
+    if (hardDelete) {
+      await db.collection("quotations").deleteOne({ _id: new ObjectId(params.id) });
+      return NextResponse.json({ message: "Quotation permanently deleted" });
+    } else {
+      await db.collection("quotations").updateOne(
+        { _id: new ObjectId(params.id) },
+        { $set: { deletedAt: new Date() } }
+      );
+      return NextResponse.json({ message: "Quotation soft-deleted" });
+    }
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "Unable to delete quotation" }, { status: 500 });
   }
 }
 

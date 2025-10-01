@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    const services = await db.collection("services").find({}).map(service => ({ ...service, _id: service._id.toString() })).toArray();
+    const services = await db.collection("services").find({ deletedAt: null }).map(service => ({ ...service, _id: service._id.toString() })).toArray();
     return NextResponse.json(services);
   } catch (e) {
     console.error(e);

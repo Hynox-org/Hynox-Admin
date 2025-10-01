@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    const quotations = await db.collection("quotations").find({}).toArray();
+    const quotations = await db.collection("quotations").find({ deletedAt: null }).toArray();
     // Map _id to id for client-side consistency
     const clientQuotations = quotations.map(quotation => ({ ...quotation, id: quotation._id.toString() }));
     return NextResponse.json(clientQuotations);

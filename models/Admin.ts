@@ -3,11 +3,13 @@ import mongoose, { Schema, Document, models, Model } from 'mongoose';
 export interface IAdmin extends Document {
   email: string;
   password?: string; // Make password optional
+  deletedAt?: Date;
 }
 
 const AdminSchema: Schema<IAdmin> = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  deletedAt: { type: Date, default: null },
 });
 
 // Check if the model already exists before defining it

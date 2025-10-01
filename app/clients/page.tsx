@@ -26,7 +26,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -34,7 +42,8 @@ export default function ClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false)
   const [isEditClientDialogOpen, setIsEditClientDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
+  const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
   const [currentClient, setCurrentClient] = useState<Client | null>(null)
   const [newClient, setNewClient] = useState<Omit<Client, "_id">>({ name: "", email: "", address: "", phone: "" })
 
@@ -65,6 +74,32 @@ export default function ClientsPage() {
   useEffect(() => {
     fetchClients();
   }, []);
+
+  const handleDeleteClient = async (id: string, hardDelete: boolean = false) => {
+    try {
+      const response = await fetch(`/api/clients/${id}${hardDelete ? '?hardDelete=true' : ''}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast({
+        title: `Client ${hardDelete ? 'permanently deleted' : 'soft-deleted'} successfully!`,
+        description: `${currentClient?.name || ''} has been ${hardDelete ? 'permanently deleted' : 'soft-deleted'}.`,
+      });
+      setIsSoftDeleteDialogOpen(false);
+      setIsHardDeleteDialogOpen(false);
+      fetchClients(); // Refresh the list
+    } catch (e: any) {
+      toast({
+        title: "Error deleting client",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -127,20 +162,68 @@ export default function ClientsPage() {
                     <TableCell>{client.name}</TableCell>
                     <TableCell>{client.email}</TableCell>
                     <TableCell>{client.phone}</TableCell>
-                    <TableCell className="flex justify-end space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setCurrentClient(client);
-                        setNewClient({ name: client.name, email: client.email, address: client.address, phone: client.phone });
-                        setIsEditClientDialogOpen(true);
-                      }}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => {
-                        setCurrentClient(client);
-                        setIsDeleteDialogOpen(true);
-                      }}>
-                        Delete
-                      </Button>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => {
+                            setCurrentClient(client);
+                            setNewClient({ name: client.name, email: client.email, address: client.address, phone: client.phone });
+                            setIsEditClientDialogOpen(true);
+                          }}>
+                            Edit
+                          </DropdownMenuItem>
+                          <AlertDialog open={isSoftDeleteDialogOpen && currentClient?._id === client._id} onOpenChange={setIsSoftDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCurrentClient(client); }}>
+                                Soft Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure you want to soft delete this client?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action will mark the client "{currentClient?.name || ''}" as deleted, but keep their data for potential recovery.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setCurrentClient(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => { if (currentClient?._id) handleDeleteClient(currentClient._id, false); }}>
+                                  Soft Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
+                          <AlertDialog open={isHardDeleteDialogOpen && currentClient?._id === client._id} onOpenChange={setIsHardDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCurrentClient(client); }}>
+                                Hard Delete
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure you want to hard delete this client?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the client
+                                  "{currentClient?.name || ''}" and remove their data from our servers.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setCurrentClient(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => { if (currentClient?._id) handleDeleteClient(currentClient._id, true); }}>
+                                  Hard Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -331,52 +414,7 @@ export default function ClientsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Client Alert Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the client "{currentClient?.name}" from your records.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={async () => {
-                if (!currentClient?._id) {
-                  toast({
-                    title: "Error deleting client",
-                    description: "Client ID is missing.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                try {
-                  const response = await fetch(`/api/clients/${currentClient._id}`, {
-                    method: "DELETE",
-                  });
-
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                  }
-
-                  toast({
-                    title: "Client deleted successfully!",
-                    description: `${currentClient.name} has been deleted.`,
-                  });
-                  setIsDeleteDialogOpen(false);
-                  fetchClients(); // Refresh the list
-                } catch (e: any) {
-                  toast({
-                    title: "Error deleting client",
-                    description: e.message,
-                    variant: "destructive",
-                  });
-                }
-              }}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Delete Client Alert Dialogs are now handled within the DropdownMenu */}
       </section>
     </main>
   );

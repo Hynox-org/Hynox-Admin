@@ -9,7 +9,7 @@ import { ClientLayoutWrapper } from "@/components/client-layout-wrapper";
 
 export const metadata: Metadata = {
   title: "Hynox Admin",
-  description: "Hynox Billing Application",
+  description: "Hynox Admin Portal",
   icons: {
     icon: "/images/hynox-logo.jpg",
   },

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const { id } = params;
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    const admin = await db.collection("admins").findOne({ _id: new ObjectId(id) });
+    const admin = await db.collection("admins").findOne({ _id: new ObjectId(id), deletedAt: null });
 
     if (!admin) {
       return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
@@ -53,13 +53,25 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { id } = params;
     const client = await clientPromise;
     const db = client.db("hynox-billing");
+    const { searchParams } = new URL(req.url);
+    const hardDelete = searchParams.get("hardDelete") === "true";
 
-    const result = await db.collection("admins").deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
+    if (hardDelete) {
+      const result = await db.collection("admins").deleteOne({ _id: new ObjectId(id) });
+      if (result.deletedCount === 0) {
+        return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
+      }
+      return NextResponse.json({ message: 'Admin permanently deleted' });
+    } else {
+      const result = await db.collection("admins").updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { deletedAt: new Date() } }
+      );
+      if (result.matchedCount === 0) {
+        return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
+      }
+      return NextResponse.json({ message: 'Admin soft-deleted' });
     }
-    return NextResponse.json({ message: 'Admin deleted successfully' });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Unable to delete admin" }, { status: 500 });

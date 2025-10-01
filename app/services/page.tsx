@@ -19,7 +19,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([])
@@ -27,7 +35,8 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAddServiceDialogOpen, setIsAddServiceDialogOpen] = useState(false)
   const [isEditServiceDialogOpen, setIsEditServiceDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
+  const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
   const [currentService, setCurrentService] = useState<Service | null>(null)
   const [newService, setNewService] = useState<Omit<Service, "_id">>({ name: "", description: "", price: 0 })
 
@@ -58,6 +67,32 @@ export default function ServicesPage() {
   useEffect(() => {
     fetchServices()
   }, [])
+
+  const handleDeleteService = async (id: string, hardDelete: boolean = false) => {
+    try {
+      const response = await fetch(`/api/services/${id}${hardDelete ? '?hardDelete=true' : ''}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast({
+        title: `Service ${hardDelete ? 'permanently deleted' : 'soft-deleted'} successfully!`,
+        description: `${currentService?.name || ''} has been ${hardDelete ? 'permanently deleted' : 'soft-deleted'}.`,
+      });
+      setIsSoftDeleteDialogOpen(false);
+      setIsHardDeleteDialogOpen(false);
+      fetchServices(); // Refresh the list
+    } catch (e: any) {
+      toast({
+        title: "Error deleting service",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -120,20 +155,68 @@ export default function ServicesPage() {
                   <TableCell>{service.name}</TableCell>
                   <TableCell>{service.description}</TableCell>
                   <TableCell>₹{service.price.toFixed(2)}</TableCell>
-                  <TableCell className="flex justify-end space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => {
-                      setCurrentService(service);
-                      setNewService({ name: service.name, description: service.description, price: service.price });
-                      setIsEditServiceDialogOpen(true);
-                    }}>
-                      Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => {
-                      setCurrentService(service);
-                      setIsDeleteDialogOpen(true);
-                    }}>
-                      Delete
-                    </Button>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => {
+                          setCurrentService(service);
+                          setNewService({ name: service.name, description: service.description, price: service.price });
+                          setIsEditServiceDialogOpen(true);
+                        }}>
+                          Edit
+                        </DropdownMenuItem>
+                        <AlertDialog open={isSoftDeleteDialogOpen && currentService?._id === service._id} onOpenChange={setIsSoftDeleteDialogOpen}>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCurrentService(service); }}>
+                              Soft Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure you want to soft delete this service?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action will mark the service "{currentService?.name || ''}" as deleted, but keep its data for potential recovery.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setCurrentService(null)}>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => currentService && handleDeleteService(currentService._id!, false)}>
+                                Soft Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+
+                        <AlertDialog open={isHardDeleteDialogOpen && currentService?._id === service._id} onOpenChange={setIsHardDeleteDialogOpen}>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCurrentService(service); }}>
+                              Hard Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure you want to hard delete this service?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the service
+                                "{currentService?.name || ''}" and remove its data from our servers.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setCurrentService(null)}>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => currentService && handleDeleteService(currentService._id!, true)}>
+                                Hard Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               )))}
@@ -301,52 +384,7 @@ export default function ServicesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Service Alert Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the service "{currentService?.name}" from your records.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={async () => {
-                if (!currentService?._id) {
-                  toast({
-                    title: "Error deleting service",
-                    description: "Service ID is missing.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                try {
-                  const response = await fetch(`/api/services/${currentService._id}`, {
-                    method: "DELETE",
-                  });
-
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                  }
-
-                  toast({
-                    title: "Service deleted successfully!",
-                    description: `${currentService.name} has been deleted.`,
-                  });
-                  setIsDeleteDialogOpen(false);
-                  fetchServices(); // Refresh the list
-                } catch (e: any) {
-                  toast({
-                    title: "Error deleting service",
-                    description: e.message,
-                    variant: "destructive",
-                  });
-                }
-              }}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Delete Service Alert Dialogs are now handled within the DropdownMenu */}
       </section>
     </main>
   )

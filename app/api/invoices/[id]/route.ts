@@ -7,7 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    const invoice = await db.collection("invoices").findOne({ _id: new ObjectId(params.id) });
+    const invoice = await db.collection("invoices").findOne({ _id: new ObjectId(params.id), deletedAt: null });
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -17,6 +17,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Unable to fetch invoice" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("hynox-billing");
+    const { searchParams } = new URL(req.url);
+    const hardDelete = searchParams.get("hardDelete") === "true";
+
+    if (hardDelete) {
+      await db.collection("invoices").deleteOne({ _id: new ObjectId(params.id) });
+      return NextResponse.json({ message: "Invoice permanently deleted" });
+    } else {
+      await db.collection("invoices").updateOne(
+        { _id: new ObjectId(params.id) },
+        { $set: { deletedAt: new Date() } }
+      );
+      return NextResponse.json({ message: "Invoice soft-deleted" });
+    }
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "Unable to delete invoice" }, { status: 500 });
   }
 }
 

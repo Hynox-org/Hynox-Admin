@@ -50,11 +50,15 @@ export function LoginForm() {
       }
 
       const data = await res.json()
-      // Note: Consider using cookies instead of localStorage for better security
-      localStorage.setItem('auth-token', data.token)
-      if (rememberMe) {
-        // Implement remember me logic here, e.g., longer token expiration
-      }
+      
+      await fetch('/api/auth/set-cookie', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: data.token }),
+      });
+
       router.push('/dashboard')
     } catch (error) {
       setError('An unexpected error occurred. Please try again.')

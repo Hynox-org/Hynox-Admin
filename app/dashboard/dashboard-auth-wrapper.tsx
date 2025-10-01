@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from '@/hooks/useAuth';
 import { ReactNode } from 'react';
 
 interface DashboardAuthWrapperProps {
@@ -8,6 +7,5 @@ interface DashboardAuthWrapperProps {
 }
 
 export default function DashboardAuthWrapper({ children }: DashboardAuthWrapperProps) {
-  useAuth();
   return <>{children}</>;
 }

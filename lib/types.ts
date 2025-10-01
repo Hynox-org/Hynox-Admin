@@ -35,7 +35,9 @@ export type Invoice = {
   from: PartyInfo
   to: PartyInfo
   items: LineItem[]
-  taxRate?: number // percent, e.g. 10 => 10%
+  cgstRate?: number // percent, e.g. 10 => 10%
+  sgstRate?: number // percent, e.g. 10 => 10%
+  igstRate?: number // percent, e.g. 10 => 10%
   discount?: number // absolute currency discount
   notes?: string
   currency: string
@@ -54,7 +56,9 @@ export type Quotation = {
   from: PartyInfo
   to: PartyInfo
   items: LineItem[]
-  taxRate?: number
+  cgstRate?: number // percent, e.g. 10 => 10%
+  sgstRate?: number // percent, e.g. 10 => 10%
+  igstRate?: number // percent, e.g. 10 => 10%
   discount?: number
   notes?: string
   currency: string
@@ -72,8 +76,9 @@ export function calcSubtotal(items: LineItem[] | undefined | null): number {
   return Number(items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0).toFixed(2))
 }
 
-export function calcTax(subtotal: number, percent: number): number {
-  return Number((((Number(percent) || 0) / 100) * subtotal).toFixed(2))
+export function calcTax(subtotal: number, cgstRate: number, sgstRate: number, igstRate: number): number {
+  const totalTaxRate = (Number(cgstRate) || 0) + (Number(sgstRate) || 0) + (Number(igstRate) || 0);
+  return Number(((totalTaxRate / 100) * subtotal).toFixed(2));
 }
 
 export type Client = {

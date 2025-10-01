@@ -29,7 +29,9 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
   const router = useRouter()
   const [company, setCompany] = useState<CompanyInfo>({ name: "Hynox", email: "", address: "", phone: "", gstNumber: "", bankName: "", accountNumber: "", ifsc: "", branch: "", upi: "" })
   const [currency, setCurrency] = useState("INR")
-  const [taxRate, setTaxRate] = useState(0)
+  const [cgstRate, setCgstRate] = useState(0)
+  const [sgstRate, setSgstRate] = useState(0)
+  const [igstRate, setIgstRate] = useState(0)
   const [loading, setLoading] = useState(true)
   const [clients, setClients] = useState<Client[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -53,18 +55,25 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
   ]);
 
   useEffect(() => {
+    if (initialData) {
+      setCgstRate(initialData.cgstRate || 0);
+      setSgstRate(initialData.sgstRate || 0);
+      setIgstRate(initialData.igstRate || 0);
+    }
+  }, [initialData]);
+
+  useEffect(() => {
     async function fetchInitialData() {
       try {
-        const [companyData, defaultCurrency, defaultTax, fetchedClients, fetchedServices] = await Promise.all([
+        const [companyData, defaultCurrency, fetchedClients, fetchedServices] = await Promise.all([
           getCompany(),
           getDefaultCurrency(),
-          getDefaultTax(),
           listClients(),
           listServices(),
         ]);
         setCompany(companyData);
         setCurrency(defaultCurrency);
-        setTaxRate(defaultTax);
+        // setTaxRate(defaultTax); // Removed as we now have CGST, SGST, IGST
         setClients(fetchedClients);
         setServices(fetchedServices);
 
@@ -93,7 +102,10 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
     () => items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0),
     [items],
   )
-  const tax = useMemo(() => (subtotal * (Number(taxRate) || 0)) / 100, [subtotal, taxRate])
+  const tax = useMemo(() => {
+    const totalTaxRate = (Number(cgstRate) || 0) + (Number(sgstRate) || 0) + (Number(igstRate) || 0);
+    return (subtotal * totalTaxRate) / 100;
+  }, [subtotal, cgstRate, sgstRate, igstRate]);
   const total = useMemo(() => Math.max(0, subtotal + tax - (Number(discount) || 0)), [subtotal, tax, discount])
 
   function updateItem(id: string, patch: Partial<LineItem>) {
@@ -115,7 +127,9 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
       from,
       to,
       items,
-      taxRate: Number(taxRate) || 0,
+      cgstRate: Number(cgstRate) || 0,
+      sgstRate: Number(sgstRate) || 0,
+      igstRate: Number(igstRate) || 0,
       discount: Number(discount) || 0,
       notes,
       currency,
@@ -212,16 +226,16 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="tax">Tax Rate (%)</Label>
-            <Input id="tax" type="number" value={taxRate} onChange={async (e) => {
-              const next = Number(e.target.value)
-              setTaxRate(next)
-              await saveDefaultTax(next)
-              toast({
-                title: "Default tax rate updated",
-                description: `Tax rate set to ${next}%.`,
-              })
-            }} />
+            <Label htmlFor="cgstRate">CGST Rate (%)</Label>
+            <Input id="cgstRate" type="number" value={cgstRate} onChange={(e) => setCgstRate(Number(e.target.value))} />
+          </div>
+          <div>
+            <Label htmlFor="sgstRate">SGST Rate (%)</Label>
+            <Input id="sgstRate" type="number" value={sgstRate} onChange={(e) => setSgstRate(Number(e.target.value))} />
+          </div>
+          <div>
+            <Label htmlFor="igstRate">IGST Rate (%)</Label>
+            <Input id="igstRate" type="number" value={igstRate} onChange={(e) => setIgstRate(Number(e.target.value))} />
           </div>
           <div>
             <Label htmlFor="discount">Discount ({currency})</Label>
@@ -393,7 +407,19 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
                 <span>{money(subtotal, currency)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Tax ({taxRate}%)</span>
+                <span className="text-muted-foreground">CGST ({cgstRate}%)</span>
+                <span>{money((subtotal * (Number(cgstRate) || 0)) / 100, currency)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">SGST ({sgstRate}%)</span>
+                <span>{money((subtotal * (Number(sgstRate) || 0)) / 100, currency)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">IGST ({igstRate}%)</span>
+                <span>{money((subtotal * (Number(igstRate) || 0)) / 100, currency)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total Tax</span>
                 <span>{money(tax, currency)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">

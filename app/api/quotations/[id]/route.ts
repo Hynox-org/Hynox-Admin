@@ -45,11 +45,21 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const quotation: Quotation = await req.json();
+    const updatedFields = await req.json();
     const client = await clientPromise;
     const db = client.db("hynox-billing");
-    // Remove the client-side 'id' field and use MongoDB's '_id' for the update query
-    const { id, ...quotationToUpdate } = quotation;
+
+    // If only status is being updated, handle it directly
+    if (Object.keys(updatedFields).length === 1 && updatedFields.status) {
+      await db.collection("quotations").updateOne(
+        { _id: new ObjectId(params.id) },
+        { $set: { status: updatedFields.status } }
+      );
+      return NextResponse.json({ message: "Quotation status updated", id: params.id, status: updatedFields.status });
+    }
+
+    // For full quotation updates, remove the client-side 'id' field and use MongoDB's '_id'
+    const { id, ...quotationToUpdate } = updatedFields;
     await db.collection("quotations").updateOne({ _id: new ObjectId(params.id) }, { $set: quotationToUpdate });
     return NextResponse.json({ ...quotationToUpdate, id: params.id }); // Return updated quotation with client-side 'id'
   } catch (e) {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { useEffect, useState } from "react"
 import { Quotation } from "@/lib/types" // Import Quotation type
@@ -37,6 +38,7 @@ export default function QuotationsPage() {
   const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
   const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
   const [quotationToDelete, setQuotationToDelete] = useState<Quotation | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null); // To track which quotation's status is being updated
 
   const fetchQuotes = async () => {
     try {
@@ -59,6 +61,37 @@ export default function QuotationsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (quotationId: string, newStatus: Quotation['status']) => {
+    setUpdatingStatus(quotationId);
+    try {
+      const response = await fetch(`/api/quotations/${quotationId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast({
+        title: "Quotation status updated!",
+        description: `Quotation #${rows.find(q => q.id === quotationId)?.number} status changed to ${newStatus}.`,
+      });
+      fetchQuotes(); // Refresh the list to show updated status
+    } catch (e: any) {
+      toast({
+        title: "Error updating quotation status",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
@@ -132,6 +165,7 @@ export default function QuotationsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quote #</TableHead>
+                <TableHead>Issue Date</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
@@ -141,7 +175,7 @@ export default function QuotationsPage() {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                     No quotations yet. Create your first one.
                   </TableCell>
                 </TableRow>
@@ -149,11 +183,28 @@ export default function QuotationsPage() {
                 rows.map((q) => (
                   <TableRow key={q.id}>
                     <TableCell>{q.number}</TableCell>
+                    <TableCell>{new Date(q.issueDate).toLocaleDateString()}</TableCell>
                     <TableCell>{q.to?.name || "-"}</TableCell>
                     <TableCell>
                       {new Intl.NumberFormat(undefined, { style: "currency", currency: q.currency }).format(q.total)}
                     </TableCell>
-                    <TableCell>{q.status}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={q.status}
+                        onValueChange={(newStatus: Quotation['status']) => handleStatusChange(q.id, newStatus)}
+                        disabled={updatingStatus === q.id}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Draft">Draft</SelectItem>
+                          <SelectItem value="Sent">Sent</SelectItem>
+                          <SelectItem value="Accepted">Accepted</SelectItem>
+                          <SelectItem value="Rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { useEffect, useState } from "react"
 import { Invoice } from "@/lib/types"
@@ -37,6 +38,7 @@ export default function InvoicesPage() {
   const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
   const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null); // To track which invoice's status is being updated
 
   const fetchInvoices = async () => {
     try {
@@ -59,6 +61,37 @@ export default function InvoicesPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (invoiceId: string, newStatus: Invoice['status']) => {
+    setUpdatingStatus(invoiceId);
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast({
+        title: "Invoice status updated!",
+        description: `Invoice #${rows.find(inv => inv.id === invoiceId)?.number} status changed to ${newStatus}.`,
+      });
+      fetchInvoices(); // Refresh the list to show updated status
+    } catch (e: any) {
+      toast({
+        title: "Error updating invoice status",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
@@ -108,6 +141,7 @@ export default function InvoicesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Invoice #</TableHead>
+                <TableHead>Issue Date</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
@@ -117,7 +151,7 @@ export default function InvoicesPage() {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                     No invoices yet. Create your first one.
                   </TableCell>
                 </TableRow>
@@ -125,13 +159,30 @@ export default function InvoicesPage() {
                 rows.map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell>{inv.number}</TableCell>
+                    <TableCell>{new Date(inv.issueDate).toLocaleDateString()}</TableCell>
                     <TableCell>{inv.to?.name || "-"}</TableCell>
                     <TableCell>
                       {new Intl.NumberFormat(undefined, { style: "currency", currency: inv.currency }).format(
                         inv.total,
                       )}
                     </TableCell>
-                    <TableCell>{inv.status}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={inv.status}
+                        onValueChange={(newStatus: Invoice['status']) => handleStatusChange(inv.id, newStatus)}
+                        disabled={updatingStatus === inv.id}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Draft">Draft</SelectItem>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Sent">Sent</SelectItem>
+                          <SelectItem value="Paid">Paid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

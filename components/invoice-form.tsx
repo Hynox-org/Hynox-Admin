@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CURRENCIES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   saveInvoice,
@@ -64,6 +65,7 @@ export default function InvoiceForm({ initialData }: InvoiceFormProps) {
     upi: "",
   });
   const [currency, setCurrency] = useState("INR");
+  const [currencies, setCurrencies] = useState<{ code: string; name: string }[]>([]);
   const [cgstRate, setCgstRate] = useState(0);
   const [sgstRate, setSgstRate] = useState(0);
   const [igstRate, setIgstRate] = useState(0);
@@ -113,6 +115,7 @@ export default function InvoiceForm({ initialData }: InvoiceFormProps) {
         ]);
         setCompany(companyData);
         setCurrency(defaultCurrency);
+        setCurrencies(CURRENCIES); // Initialize currencies
         // setTaxRate(defaultTax); // Removed as we now have CGST, SGST, IGST
         setClients(fetchedClients);
         setServices(fetchedServices);
@@ -277,19 +280,28 @@ export default function InvoiceForm({ initialData }: InvoiceFormProps) {
           </div>
           <div>
             <Label htmlFor="currency">Currency</Label>
-            <Input
-              id="currency"
-              value={currency}
-              onChange={async (e) => {
-                const next = e.target.value.toUpperCase();
-                setCurrency(next);
-                await saveDefaultCurrency(next);
+            <Select
+              onValueChange={async (value) => {
+                setCurrency(value);
+                await saveDefaultCurrency(value);
                 toast({
                   title: "Default currency updated",
-                  description: `Currency set to ${next}.`,
+                  description: `Currency set to ${value}.`,
                 });
               }}
-            />
+              value={currency}
+            >
+              <SelectTrigger id="currency">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.code} - {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="cgstRate">CGST Rate (%)</Label>
@@ -355,6 +367,7 @@ export default function InvoiceForm({ initialData }: InvoiceFormProps) {
                     email: selectedClient.email || "",
                     address: selectedClient.address || "",
                     phone: selectedClient.phone || "",
+                    gstin: selectedClient.gstin || "",
                   });
                 }
               }}
@@ -397,6 +410,13 @@ export default function InvoiceForm({ initialData }: InvoiceFormProps) {
             <Input
               value={to.phone}
               onChange={(e) => setTo({ ...to, phone: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>GSTIN</Label>
+            <Input
+              value={to.gstin}
+              onChange={(e) => setTo({ ...to, gstin: e.target.value })}
             />
           </div>
         </CardContent>

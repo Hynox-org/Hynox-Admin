@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useEffect, useState } from "react"
 import { Quotation } from "@/lib/types" // Import Quotation type
+import { isValidCurrencyCode } from "@/lib/utils" // Import the utility function
 import {
   AlertDialog,
   AlertDialogAction,
@@ -186,7 +187,10 @@ export default function QuotationsPage() {
                     <TableCell>{new Date(q.issueDate).toLocaleDateString()}</TableCell>
                     <TableCell>{q.to?.name || "-"}</TableCell>
                     <TableCell>
-                      {new Intl.NumberFormat(undefined, { style: "currency", currency: q.currency }).format(q.total)}
+                      {new Intl.NumberFormat(undefined, {
+                        style: "currency",
+                        currency: isValidCurrencyCode(q.currency) ? q.currency : "USD", // Fallback to USD if currency is invalid
+                      }).format(q.total)}
                     </TableCell>
                     <TableCell>
                       <Select

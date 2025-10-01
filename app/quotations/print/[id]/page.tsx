@@ -67,9 +67,10 @@ export default function QuotePrintPage() {
           company={company}
           billToName={quote.to?.name || "-"}
           billToAddress={quote.to?.address}
+          billToGstin={quote.to?.gstin}
           items={quote.items || []}
           showTax
-          taxPercent={quote.taxRate || 0}
+          taxPercent={(quote.cgstRate || 0) + (quote.sgstRate || 0) + (quote.igstRate || 0)}
           notes={quote.notes}
         />
       </div>

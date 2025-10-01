@@ -67,9 +67,10 @@ export default function InvoicePrintPage() {
           company={company}
           billToName={invoice.to?.name || "-"}
           billToAddress={invoice.to?.address}
+          billToGstin={invoice.to?.gstin}
           items={invoice.items || []}
           showTax
-          taxPercent={invoice.taxRate || 0}
+          taxPercent={(invoice.cgstRate || 0) + (invoice.sgstRate || 0) + (invoice.igstRate || 0)}
           notes={invoice.notes}
         />
       </div>

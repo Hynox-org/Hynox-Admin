@@ -11,6 +11,7 @@ type Props = {
   company: CompanyInfo
   billToName: string
   billToAddress?: string
+  billToGstin?: string
   items: LineItem[] | undefined | null
   showTax: boolean
   taxPercent?: number
@@ -26,6 +27,7 @@ export default function PrintLayout({
   company,
   billToName,
   billToAddress,
+  billToGstin,
   items,
   showTax,
   taxPercent = 0,
@@ -33,7 +35,13 @@ export default function PrintLayout({
   className,
 }: Props) {
   const subtotal = calcSubtotal(items)
-  const tax = showTax ? calcTax(subtotal, taxPercent) : 0
+  // The tax calculation in PrintLayout needs to be updated to use cgstRate, sgstRate, igstRate
+  // For now, we'll use a placeholder or assume a single tax rate if taxPercent is still used.
+  // Given the previous changes, it's likely that the individual tax rates should be passed down.
+  // However, the current Props only has taxPercent.
+  // I will assume for now that taxPercent is the total tax rate for simplicity,
+  // but this might need further refinement if the design requires separate display of CGST/SGST/IGST.
+  const tax = showTax ? (subtotal * (taxPercent || 0)) / 100 : 0;
   const total = subtotal + tax
 
   return (
@@ -73,6 +81,7 @@ export default function PrintLayout({
           <p className="text-sm font-medium">Bill To</p>
           <p className="font-semibold">{billToName}</p>
           {billToAddress && <p className="text-sm leading-6">{billToAddress}</p>}
+          {billToGstin && <p className="text-sm">GSTIN: {billToGstin}</p>}
         </div>
 
         {/* Bank details */}

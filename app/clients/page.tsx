@@ -45,7 +45,7 @@ export default function ClientsPage() {
   const [isSoftDeleteDialogOpen, setIsSoftDeleteDialogOpen] = useState(false)
   const [isHardDeleteDialogOpen, setIsHardDeleteDialogOpen] = useState(false)
   const [currentClient, setCurrentClient] = useState<Client | null>(null)
-  const [newClient, setNewClient] = useState<Omit<Client, "_id">>({ name: "", email: "", address: "", phone: "" })
+  const [newClient, setNewClient] = useState<Omit<Client, "_id">>({ name: "", email: "", address: "", phone: "", gstin: "" })
 
   const fetchClients = async () => {
     try {
@@ -144,13 +144,14 @@ export default function ClientsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>GSTIN</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No Clients yet. Create your first one.
@@ -162,6 +163,7 @@ export default function ClientsPage() {
                     <TableCell>{client.name}</TableCell>
                     <TableCell>{client.email}</TableCell>
                     <TableCell>{client.phone}</TableCell>
+                    <TableCell>{client.gstin}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -173,7 +175,7 @@ export default function ClientsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onSelect={() => {
                             setCurrentClient(client);
-                            setNewClient({ name: client.name, email: client.email, address: client.address, phone: client.phone });
+                            setNewClient({ name: client.name, email: client.email, address: client.address, phone: client.phone, gstin: client.gstin });
                             setIsEditClientDialogOpen(true);
                           }}>
                             Edit
@@ -284,6 +286,17 @@ export default function ClientsPage() {
                   className="col-span-3"
                 />
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="gstin" className="text-right">
+                  GSTIN
+                </Label>
+                <Input
+                  id="gstin"
+                  value={newClient.gstin}
+                  onChange={(e) => setNewClient({ ...newClient, gstin: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddClientDialogOpen(false)}>Cancel</Button>
@@ -368,6 +381,17 @@ export default function ClientsPage() {
                   id="edit-address"
                   value={newClient.address}
                   onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-gstin" className="text-right">
+                  GSTIN
+                </Label>
+                <Input
+                  id="edit-gstin"
+                  value={newClient.gstin}
+                  onChange={(e) => setNewClient({ ...newClient, gstin: e.target.value })}
                   className="col-span-3"
                 />
               </div>

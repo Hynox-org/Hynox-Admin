@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CURRENCIES } from "@/lib/constants"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { saveQuote, getCompany, getDefaultTax, getDefaultCurrency, saveDefaultCurrency, saveDefaultTax, listClients, listServices } from "@/lib/storage"
 import type { LineItem, Quotation, CompanyInfo, Client, Service } from "@/lib/types"
@@ -29,6 +30,7 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
   const router = useRouter()
   const [company, setCompany] = useState<CompanyInfo>({ name: "Hynox", email: "", address: "", phone: "", gstNumber: "", bankName: "", accountNumber: "", ifsc: "", branch: "", upi: "" })
   const [currency, setCurrency] = useState("INR")
+  const [currencies, setCurrencies] = useState<{ code: string; name: string }[]>([]);
   const [cgstRate, setCgstRate] = useState(0)
   const [sgstRate, setSgstRate] = useState(0)
   const [igstRate, setIgstRate] = useState(0)
@@ -73,6 +75,7 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
         ]);
         setCompany(companyData);
         setCurrency(defaultCurrency);
+        setCurrencies(CURRENCIES); // Initialize currencies
         // setTaxRate(defaultTax); // Removed as we now have CGST, SGST, IGST
         setClients(fetchedClients);
         setServices(fetchedServices);
@@ -211,19 +214,28 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
           </div>
           <div>
             <Label htmlFor="currency">Currency</Label>
-            <Input
-              id="currency"
-              value={currency}
-              onChange={async (e) => {
-                const next = e.target.value.toUpperCase()
-                setCurrency(next)
-                await saveDefaultCurrency(next)
+            <Select
+              onValueChange={async (value) => {
+                setCurrency(value);
+                await saveDefaultCurrency(value);
                 toast({
                   title: "Default currency updated",
-                  description: `Currency set to ${next}.`,
-                })
+                  description: `Currency set to ${value}.`,
+                });
               }}
-            />
+              value={currency}
+            >
+              <SelectTrigger id="currency">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.code} - {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="cgstRate">CGST Rate (%)</Label>
@@ -283,6 +295,7 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
                   email: selectedClient.email || "",
                   address: selectedClient.address || "",
                   phone: selectedClient.phone || "",
+                  gstin: selectedClient.gstin || "",
                 })
               }
             }}>
@@ -313,6 +326,10 @@ export default function QuotationForm({ initialData }: QuotationFormProps) {
           <div>
             <Label>Phone</Label>
             <Input value={to.phone} onChange={(e) => setTo({ ...to, phone: e.target.value })} />
+          </div>
+          <div>
+            <Label>GSTIN</Label>
+            <Input value={to.gstin} onChange={(e) => setTo({ ...to, gstin: e.target.value })} />
           </div>
         </CardContent>
       </Card>

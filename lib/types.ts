@@ -11,6 +11,7 @@ export type PartyInfo = {
   email?: string
   address?: string
   phone?: string
+  gstin?: string
 }
 
 export type CompanyInfo = {
@@ -87,6 +88,7 @@ export type Client = {
   email?: string;
   address?: string;
   phone?: string;
+  gstin?: string;
   deletedAt?: Date;
 };
 
